@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #ifndef NET_H
 #define NET_H 1
@@ -16,6 +17,8 @@
 #define LIST_USERS_RESPONSE 5
 #define INBOX_REQUEST 6
 #define INBOX_RESPONSE 7
+#define FILE_TRANSFER_REQUEST 8
+#define FILE_TRANSFER_RESPONSE 9
 
 typedef struct Peer {
     int port;
@@ -29,8 +32,9 @@ typedef struct Message {
 
 Peer new_peer(int, char*);
 Message new_message(int, char*);
-void bind_port(int);
+void bind_port(int, int);
 void send_message(Message, Peer);
 void receive_message(Message*, Peer*);
+void transer_file(char*, char*,char*);
 
 #endif
