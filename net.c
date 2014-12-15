@@ -30,7 +30,10 @@ void bind_port(int port, int tcp_port) {
     addr.sin_family      = AF_INET;
     addr.sin_port        = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bind(sock, (struct sockaddr*) &addr, sizeof(addr)) < 0) return perror("bind");
+    if (bind(sock, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
+        printf("porta para udp já em uso\n");
+        exit(1);
+    }
 
     if (!tcp_port) return;
     tcp_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -39,8 +42,14 @@ void bind_port(int port, int tcp_port) {
     addr.sin_family      = AF_INET;
     addr.sin_port        = htons(tcp_port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bind(tcp_sock, (struct sockaddr*) &addr, sizeof(addr)) < 0) return perror("bind");
-    if (listen(tcp_sock, 1) == -1) perror("listen");
+    if (bind(tcp_sock, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
+        printf("porta para tcp já em uso\n");
+        exit(1);
+    }
+    if (listen(tcp_sock, 1) == -1) {
+        printf("erro ao escutar porta\n");
+        exit(1);
+    }
     wait_files(tcp_sock);
     close(tcp_sock);
 }
@@ -52,8 +61,8 @@ void send_message(Message message, Peer peer) {
     addr.sin_family = AF_INET;
     addr.sin_port   = htons(peer->port);
     sprintf(msg, "[%d]%s", message->type, message->message);
-    if (inet_pton(AF_INET, peer->ip, &addr.sin_addr) <= 0) return perror("inetpton");
-    if (sendto(sock, msg, strlen(msg), 0, (struct sockaddr*) &addr, sizeof(addr)) < 0) return perror("sendto");
+    if (inet_pton(AF_INET, peer->ip, &addr.sin_addr) <= 0) return;
+    if (sendto(sock, msg, strlen(msg), 0, (struct sockaddr*) &addr, sizeof(addr)) < 0) return;
 }
 
 void receive_message(Message * message, Peer * peer) {
@@ -62,7 +71,7 @@ void receive_message(Message * message, Peer * peer) {
     char * msg = malloc(sizeof(char) * MAX_SIZE);
     len = sizeof(addr);
     bzero(&addr, sizeof(addr));
-    if ((size = recvfrom(sock, msg, MAX_SIZE, 0, (struct sockaddr *) &addr, (socklen_t *)&len)) < 0) return perror("recvfrom");
+    if ((size = recvfrom(sock, msg, MAX_SIZE, 0, (struct sockaddr *) &addr, (socklen_t *)&len)) < 0) return;
     msg[size] = '\0';
     if (peer) *peer       = new_peer(ntohs(addr.sin_port), inet_ntoa(addr.sin_addr));
     if (message) *message = new_message(msg[1] - '0', msg + 3);

@@ -10,12 +10,7 @@ typedef struct ClientNode {
     struct ClientNode * next;
 } * ClientNode;
 
-typedef struct ClientList {
-    ClientNode head;
-    int size;
-} * ClientList;
-
-ClientList clientList;
+ClientNode clientList;
 
 void login(Peer client, Message message) {
     char *port, *username;
@@ -29,21 +24,45 @@ void login(Peer client, Message message) {
 
     node->client     = new_peer(client->port, client->ip);
     node->username   = username;
-    node->next       = clientList->head;
+    node->next       = clientList;
     node->TCPport    = atoi(port);
-    clientList->head = node;
+    clientList = node;
+    printf("%s:%d se conectando com user name %s\n", client->ip, client->port, username);
+}
+
+void logout(Peer client) {
+    ClientNode previous, node;
+    if (!clientList) return;
+    if (strcmp(clientList->client->ip, client->ip) == 0 && clientList->client->port == client->port) {
+        node       = clientList;
+        clientList = clientList->next;
+        free(node);
+    } else {
+        previous = clientList;
+        node     = clientList->next;
+        while(node != NULL && !(strcmp(node->client->ip, client->ip) == 0 && node->client->port == client->port)) {
+            previous = node;
+            node     = node->next;
+        }
+        if (node != NULL) {
+            previous->next = node->next;
+            printf("%s:%d se desconectando\n", node->client->ip, node->client->port);
+            free(node);
+        }
+    }
 }
 
 void list_users(Peer client) {
     ClientNode node;
     Message message = new_message(LIST_USERS_RESPONSE, (char *) malloc(sizeof(char) * MAX_SIZE));
-    for (node = clientList->head; node != NULL; node = node->next) {
+    for (node = clientList; node != NULL; node = node->next) {
         strcat(message->message, node->username);
         strcat(message->message, "\n");
     }
     message->message[strlen(message->message) - 1] = '\0';
     send_message(message, client);
     free(message);
+    printf("%s:%d requisitando listagem de usuários\n", client->ip, client->port);
 }
 
 void send_inbox(Peer client, Message message) {
@@ -59,7 +78,7 @@ void send_inbox(Peer client, Message message) {
 
     source = NULL;
     destiny = NULL;
-    for (node = clientList->head; node != NULL; node = node->next) {
+    for (node = clientList; node != NULL; node = node->next) {
         if (strcmp(node->client->ip, client->ip) == 0 && node->client->port == client->port) source = node;
         if (strcmp(username, node->username) == 0) destiny = node;
     }
@@ -71,6 +90,7 @@ void send_inbox(Peer client, Message message) {
     strcat(inbox->message, msg);
     send_message(inbox, destiny->client);
     free(inbox);
+    printf("%s:%d enviando mensagem para %s:%d\n", source->client->ip, source->client->port, destiny->client->ip, destiny->client->port);
 }
 
 void file_transfer(Peer client, Message message) {
@@ -86,7 +106,7 @@ void file_transfer(Peer client, Message message) {
 
     source = NULL;
     destiny = NULL;
-    for (node = clientList->head; node != NULL; node = node->next) {
+    for (node = clientList; node != NULL; node = node->next) {
         if (strcmp(node->client->ip, client->ip) == 0 && node->client->port == client->port) source = node;
         if (strcmp(username, node->username) == 0) destiny = node;
     }
@@ -96,6 +116,7 @@ void file_transfer(Peer client, Message message) {
     sprintf(inbox->message, "%s\t%s\t%d", file, destiny->client->ip, destiny->TCPport);
     send_message(inbox, source->client);
     free(inbox);
+    printf("%s:%d enviando arquivo para %s:%d\n", source->client->ip, source->client->port, destiny->client->ip, destiny->client->port);
 }
 
 int main(int argc, char **argv) {
@@ -113,9 +134,7 @@ int main(int argc, char **argv) {
 
     bind_port(port, 0);
 
-    clientList = (ClientList) malloc(sizeof(struct ClientList));
-    clientList->head = NULL;
-    clientList->size = 0;
+    clientList = NULL;
 
     while(1) {
         receive_message(&message, &client);
@@ -132,8 +151,8 @@ int main(int argc, char **argv) {
             case FILE_TRANSFER_REQUEST:
                 file_transfer(client, message);
                 break;
-            default:
-                exit(1);
+            case LOGOUT_REQUEST:
+                logout(client);
                 break;
         }
         free(message);

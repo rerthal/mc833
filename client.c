@@ -12,9 +12,10 @@ void login(Peer server, char * username, int port) {
 }
 
 void logout(Peer server) {
-    Message message = new_message(LOGOUT_REQUEST, NULL);
+    Message message = new_message(LOGOUT_REQUEST, "");
     send_message(message, server);
     free(message);
+    exit(0);
 }
 
 void list_users(Peer server) {
@@ -91,6 +92,9 @@ void get_command(Peer server) {
         message[strlen(message) - 1] = '\0';
         send_file(server, username, message);
     }
+    if (strcmp(command, "sair") == 0) {
+        logout(server);
+    }
     printf("> ");
 }
 
@@ -148,9 +152,9 @@ int main(int argc, char **argv) {
     login(server, username, localTCPPort);
 
     if (fork() == 0) {
-        while(1) get_command(server);
-    } else {
         while(1) receive_inbox();
+    } else {
+        while(1) get_command(server);
     }
     
     return 0;
