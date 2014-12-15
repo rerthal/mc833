@@ -145,6 +145,11 @@ int main(int argc, char **argv) {
         printf("%s\n", username);
     }
 
+    printf("para listar os usuários digite >listar\n");
+    printf("para enviar arquivos digite    >enviar usuario arquivo\n");
+    printf("para enviar mensagem digite    >mensagem usuario arquivo\n");
+    printf("para sair digite               >sair\n");
+
     printf("> ");
 
     server = new_peer(serverPort, serverIp);
